@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Santa Lucia • Einsatz-Live-Board</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Cinzel -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+
+    /* ==========================================================================
+       CINEMATIC INTRO ANIMATION STYLES
+       ========================================================================== */
+    .intro-bg {
+      background: radial-gradient(circle at 50% 35%, #1e293b 0%, #090d16 70%, #020617 100%);
+      overflow: hidden;
+    }
+
+    .light-rays {
+      position: absolute;
+      inset: -50%;
+      background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        rgba(245, 158, 11, 0.08) 20deg,
+        transparent 40deg,
+        rgba(59, 130, 246, 0.08) 90deg,
+        transparent 120deg,
+        rgba(245, 158, 11, 0.1) 180deg,
+        transparent 220deg,
+        rgba(16, 185, 129, 0.07) 280deg,
+        transparent 320deg
+      );
+      animation: rotateRays 24s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes rotateRays {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .santa-title {
+      font-family: 'Cinzel', serif;
+      background: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #fffbeb 70%, #d97706 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 28px rgba(245, 158, 11, 0.55));
+      opacity: 0;
+      transform: scale(0.6) translateY(25px);
+      transition: all 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .santa-title.show {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    .sub-phrase {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sub-phrase.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .morph-word-box {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      position: relative;
+    }
+
+    .morph-insert-auf {
+      display: inline-block;
+      max-width: 0;
+      opacity: 0;
+      overflow: visible;
+      white-space: nowrap;
+      color: #38bdf8;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.8);
+      transform: translate(-55px, -45px) rotate(-22deg) scale(1.5);
+      transition: max-width 0.75s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 0.5s ease,
+                  transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  color 0.6s ease 0.6s;
+    }
+
+    .morph-insert-auf.swoop-in {
+      max-width: 3.2em;
+      opacity: 1;
+      transform: translate(0, 0) rotate(0deg) scale(1);
+      color: #facc15;
+    }
+
+    .morph-insert-r {
+      display: inline-block;
+      max-width: 0;
+      opacity: 0;
+      overflow: visible;
+      white-space: nowrap;
+      color: #38bdf8;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.8);
+      transform: translate(45px, 45px) rotate(25deg) scale(1.6);
+      transition: max-width 0.75s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 0.5s ease,
+                  transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  color 0.6s ease 0.6s;
+    }
+
+    .morph-insert-r.swoop-in {
+      max-width: 1.1em;
+      opacity: 1;
+      transform: translate(0, 0) rotate(0deg) scale(1);
+      color: #facc15;
+    }
+
+    .anchor-tag-letter {
+      display: inline-block;
+      color: #ffffff;
+      transition: color 0.5s ease, text-shadow 0.5s ease, transform 0.5s ease;
+    }
+
+    .anchor-tag-letter.morphed {
+      color: #facc15;
+      text-shadow: 0 0 24px rgba(250, 204, 21, 0.75);
+    }
+
+    .swoop-arc-svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px;
+      height: 110px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .swoop-arc-svg.active {
+      opacity: 1;
+    }
+
+    .swoop-path {
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+    }
+
+    .swoop-arc-svg.active .swoop-path {
+      animation: drawArc 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes drawArc {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .sparkle {
+      position: absolute;
+      border-radius: 9999px;
+      pointer-events: none;
+      animation: floatSparkle linear infinite;
+    }
+
+    @keyframes floatSparkle {
+      0% { transform: translateY(0) scale(0.6); opacity: 0; }
+      30% { opacity: 0.85; }
+      70% { opacity: 0.85; }
+      100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+    }
+
+    @keyframes shakeError {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    .shake-error {
+      animation: shakeError 0.4s ease;
+    }
+
+    .pulse-dot {
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.92); }
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: 1fr 84px 88px;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    @media (min-width: 640px) {
+      .board-grid {
+        grid-template-columns: 1fr 124px 128px;
+        gap: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- ==========================================================================
+       1. CINEMATIC INTRO OVERLAY ("Santa Lucia" -> "... ein neuer AUFTRAG")
+       ========================================================================== -->
+  <div id="introOverlay" class="fixed inset-0 z-50 intro-bg flex flex-col items-center justify-between p-6 text-white select-none transition-opacity duration-700">
+    <div class="light-rays"></div>
+    <div id="sparkleContainer" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+
+    <div class="relative z-10 w-full max-w-xl flex justify-between items-center pt-2">
+      <span class="text-xs font-bold uppercase tracking-widest text-amber-400/90 flex items-center gap-2">
+        <svg class="w-5 h-5 text-orange-500 shrink-0" viewBox="0 0 36 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2"/>
+          <path d="M19 5L23 5L29 17" stroke="#f8fafc" stroke-width="2.2"/>
+          <path d="M11 10L9 7H6" stroke="#f8fafc" stroke-width="2"/>
+          <path d="M14 17H23L20 12H15L14 17Z" fill="#f97316" stroke="none"/>
+        </svg>
+        <span>Santa Lucia Live-System</span>
+      </span>
+      <span class="text-[11px] font-bold text-amber-300/80 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+        🔐 Passwortgeschützt
+      </span>
+    </div>
+
+    <div class="relative z-10 flex flex-col items-center justify-center text-center my-auto px-2 py-8 w-full max-w-2xl">
+      <div id="introStep1" class="santa-title text-5xl sm:text-7xl font-black tracking-wider mb-6">
+        Santa Lucia
+      </div>
+
+      <div class="relative flex flex-wrap items-baseline justify-center gap-x-3 gap-y-2 min-h-[4.5rem]">
+        <span id="introStep2Prefix" class="sub-phrase text-2xl sm:text-4xl font-semibold text-slate-200 italic tracking-wide">
+          ... ein neuer
+        </span>
+
+        <div id="introStep2Tag" class="sub-phrase relative inline-flex items-baseline justify-center">
+          <svg id="introSwoopSvg" class="swoop-arc-svg" viewBox="0 0 280 110" fill="none">
+            <path class="swoop-path" d="M 15 85 Q 140 -25 265 80" stroke="url(#goldGrad)" stroke-width="3.5" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0"/>
+                <stop offset="50%" stop-color="#facc15" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+          </svg>
+
+          <div class="morph-word-box text-3xl sm:text-5xl tracking-wider">
+            <span id="morphAuf" class="morph-insert-auf">AUF</span><span id="anchorT" class="anchor-tag-letter">T</span><span id="morphR" class="morph-insert-r">R</span><span id="anchorAG" class="anchor-tag-letter">AG</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="introStep4Cta" class="mt-10 opacity-0 translate-y-4 pointer-events-none transition-all duration-700 flex flex-col items-center gap-4">
+        <button onclick="finishIntro()" class="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-slate-950 font-black text-sm sm:text-base tracking-wide shadow-[0_0_30px_rgba(249,115,22,0.55)] hover:scale-105 active:scale-95 transition flex items-center gap-2">
+          <span>🔐</span> <span>Weiter zur Passwort-Eingabe</span>
+        </button>
+        <button onclick="replayIntroAnimation()" class="text-xs font-semibold text-slate-400 hover:text-amber-300 transition">
+          🔄 Intro nochmal abspielen
+        </button>
+      </div>
+    </div>
+
+    <div class="relative z-10 text-center pb-2">
+      <div class="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-xs">
+        <span class="text-xs font-bold tracking-widest uppercase text-amber-300/90">
+          created by Dave Braunski
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       2. PASSWORT-SCHUTZ GATE ("vamida")
+       ========================================================================== -->
+  <div id="passwordOverlay" class="fixed inset-0 z-40 bg-slate-950 hidden flex-col items-center justify-between p-6 text-white">
+    <div class="w-full max-w-md flex justify-between items-center">
+      <span class="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
+        <svg class="w-5 h-5 text-orange-500 shrink-0" viewBox="0 0 36 24" fill="none">
+          <circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2"/>
+          <path d="M19 5L23 5L29 17" stroke="#f8fafc" stroke-width="2.2"/>
+          <path d="M11 10L9 7H6" stroke="#f8fafc" stroke-width="2"/>
+          <path d="M14 17H23L20 12H15L14 17Z" fill="#f97316"/>
+        </svg>
+        <span>Santa Lucia Security Gate</span>
+      </span>
+      <button onclick="startIntroSequence()" class="text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+        ✨ Intro abspielen
+      </button>
+    </div>
+
+    <div id="loginCard" class="w-full max-w-sm bg-slate-900 border-2 border-orange-500/40 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(249,115,22,0.15)] my-auto">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/40 flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <svg class="w-10 h-10 text-orange-500" viewBox="0 0 36 24" fill="none">
+          <circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.2"/>
+          <path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2"/>
+          <path d="M19 5L23 5L29 17" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M11 10L9 7H6" stroke="#f8fafc" stroke-width="2" stroke-linecap="round"/>
+          <path d="M14 17H23L20 12H15L14 17Z" fill="#f97316"/>
+        </svg>
+      </div>
+      <h2 class="text-xl sm:text-2xl font-black text-center text-white tracking-tight">Santa Lucia Live-Board</h2>
+      <p class="text-xs text-slate-400 text-center mt-1.5 mb-6 leading-relaxed">
+        Streng geschützter Bereich für <strong class="text-orange-400">🏍️ Santa Käptn</strong> &amp; <strong class="text-emerald-400">💪 Braunski</strong>.<br>Ohne gültiges Passwort kein Zugriff!
+      </p>
+
+      <form onsubmit="handlePasswordSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 text-center">Pflicht-Passwort eingeben</label>
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="••••••••"
+            autocomplete="off"
+            required
+            class="w-full px-4 py-3.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500 text-center"
+          >
+          <p id="passwordErrorMsg" class="text-xs text-rose-400 font-semibold text-center mt-2 hidden">
+            ❌ Zugriff verweigert! Falsches Passwort.
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg active:scale-98 transition"
+        >
+          🔓 Mit Passwort entsperren
+        </button>
+      </form>
+    </div>
+
+    <div class="text-center pb-2">
+      <p class="text-xs font-bold tracking-widest uppercase text-slate-400">
+        created by <span class="text-orange-400">Dave Braunski</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       2b. DAUERHAFTE LIZENZ-SPERRE / KILL-SWITCH
+       ========================================================================== -->
+  <div id="revokedOverlay" class="fixed inset-0 z-[60] bg-slate-950 hidden flex-col items-center justify-center p-6 text-white text-center select-none">
+    <div class="w-full max-w-md bg-slate-900 border-2 border-rose-600/60 rounded-3xl p-7 sm:p-9 shadow-[0_0_60px_rgba(225,29,72,0.25)]">
+      <div class="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center mx-auto mb-4 text-3xl">
+        ⛔
+      </div>
+      <span class="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+        System dauerhaft abgeschaltet
+      </span>
+      <h2 class="text-2xl font-black text-white mt-4 mb-2">Lizenz &amp; Zugang erloschen</h2>
+      <p id="revokedReasonText" class="text-sm text-slate-300 leading-relaxed mb-6">
+        Dieses Einsatz-Board wurde vom Entwickler (<strong class="text-orange-400">Dave Braunski</strong>) deaktiviert und steht nicht mehr zur Verfügung.
+      </p>
+      <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 font-mono mb-6">
+        STATUS: <span class="text-rose-400 font-bold">ERR_LICENSE_REVOKED_BY_CREATOR</span>
+      </div>
+
+      <details class="text-left border-t border-slate-800 pt-4">
+        <summary class="text-xs font-bold text-slate-500 hover:text-slate-300 cursor-pointer text-center">
+          🔑 Entwickler-Freischaltung (Dave Braunski)
+        </summary>
+        <div class="mt-3 flex gap-2">
+          <input type="password" id="restoreMasterPinInput" placeholder="Master-PIN..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono text-center focus:outline-none focus:border-orange-500">
+          <button onclick="restoreSystemWithMasterPin()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0">
+            Reaktivieren
+          </button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       2c. CREATOR ADMIN-KONSOLE MODAL
+       ========================================================================== -->
+  <div id="creatorAdminModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-orange-500/50">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛡️</span>
+          <h3 class="text-base sm:text-lg font-black text-amber-400">Dave Braunski • Creator-Schutz</h3>
+        </div>
+        <button onclick="closeCreatorAdminModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed mb-4">
+        Hier kannst du als Entwickler die gesamte App live über die Cloud für alle Geräte dauerhaft unbenutzbar machen. Alle Auftragsdaten werden gleichzeitig gelöscht.
+      </p>
+
+      <div class="space-y-3 mb-5">
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Geheimer Master-Code (Standard: <span class="text-orange-400 font-mono">braunski-exit</span>)
+          </label>
+          <input type="password" id="creatorKillPinInput" placeholder="Master-Code..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-rose-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Abschiedsmeldung:</label>
+          <input type="text" id="creatorKillMessageInput" value="Lizenz beendet: Dave Braunski ist nicht mehr im Unternehmen. System abgeschaltet." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-rose-500">
+        </div>
+      </div>
+
+      <div id="creatorAdminError" class="hidden text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 rounded-xl p-2.5 mb-4 text-center">
+        ❌ Falscher Master-Code!
+      </div>
+
+      <div class="flex gap-2.5">
+        <button onclick="closeCreatorAdminModal()" class="flex-1 py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Abbrechen</button>
+        <button onclick="activatePermanentKillSwitch()" class="flex-1 py-3 rounded-xl font-black text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition flex items-center justify-center gap-1.5">
+          <span>💣</span> <span>App zerstören</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       3. TOASTS & MODALS
+       ========================================================================== -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden max-w-sm w-11/12 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transition-all duration-300">
+    <span id="toastIcon" class="text-xl">✅</span>
+    <span id="toastMessage" class="text-sm font-medium leading-snug">Nachricht</span>
+  </div>
+
+  <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <h3 id="confirmTitle" class="text-lg font-bold text-slate-900 mb-2">Bestätigung</h3>
+      <p id="confirmText" class="text-sm text-slate-600 mb-6 leading-relaxed">Aktion ausführen?</p>
+      <div class="flex gap-3">
+        <button id="confirmCancelBtn" class="flex-1 py-3 px-4 rounded-xl font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200">Abbrechen</button>
+        <button id="confirmOkBtn" class="flex-1 py-3 px-4 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700">Ja</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="roomModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-extrabold text-slate-900">🔑 Team-Code / Raum</h3>
+        <button onclick="closeRoomModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4 leading-relaxed">Alle Handys mit demselben Team-Code sehen dasselbe Live-Board in Echtzeit.</p>
+      <input type="text" id="roomCodeInput" placeholder="z.B. TEAM-KASSEL" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-mono font-bold uppercase text-slate-900 mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      <div class="flex gap-2">
+        <button onclick="closeRoomModal()" class="flex-1 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100">Abbrechen</button>
+        <button onclick="changeRoomCode()" class="flex-1 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700">Verbinden</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shareModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-8">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">📲 Auftrag teilen</h3>
+        <button onclick="closeShareModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold">✕</button>
+      </div>
+      <div class="flex flex-col items-center bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">QR-Code scannen</p>
+        <div class="bg-white p-3 rounded-xl shadow-xs border border-slate-100">
+          <img id="qrCodeImage" src="https://placehold.co/220x220/ffffff/0f172a?text=QR+Code" alt="QR Code" class="w-48 h-48 object-contain">
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Transfer-Link:</label>
+        <div class="flex gap-2">
+          <input type="text" id="transferCodeOutput" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono text-slate-700 select-all">
+          <button onclick="copyTransferCode()" class="px-3.5 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shrink-0">Kopieren</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       4. HAUPT-APP CONTENT
+       ========================================================================== -->
+  <div id="protectedAppContainer" class="hidden flex-col min-h-screen justify-between">
+    <div>
+      <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-lg border-b border-slate-800">
+        <div class="max-w-2xl mx-auto px-3 sm:px-4 pt-3 pb-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/25 to-amber-500/10 border border-orange-500/50 flex items-center justify-center shrink-0 shadow-xs" title="Harley-Davidson Santa Käptn Edition">
+                <svg class="w-7 h-7" viewBox="0 0 36 24" fill="none">
+                  <circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.3"/>
+                  <circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.3"/>
+                  <path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2.1"/>
+                  <path d="M19 4.5L23 4.5L29 17" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+                  <path d="M11 10L9 7H5.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M14 17H23L20 12H15L14 17Z" fill="#f97316"/>
+                </svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h1 class="text-base sm:text-lg font-black tracking-tight text-amber-400 leading-none">SANTA LUCIA</h1>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40">Harley-Board</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-400 pulse-dot"></span>
+                  <span id="syncStatusText" class="text-[11px] font-semibold text-slate-300 tracking-wide uppercase">Verbinde Cloud...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <button onclick="lockBoardNow()" class="bg-rose-950/80 hover:bg-rose-900 border border-rose-700/70 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-200 flex items-center gap-1">
+                <span>🔒</span> <span class="hidden sm:inline">Sperren</span>
+              </button>
+              <button onclick="startIntroSequence()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-300 flex items-center gap-1">
+                <span>✨</span> <span class="hidden sm:inline">Intro</span>
+              </button>
+              <button onclick="openShareModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center gap-1">
+                <span>📷</span> <span class="hidden sm:inline">QR / Code</span>
+              </button>
+              <button onclick="openRoomModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold text-blue-300 flex items-center gap-1">
+                <span>📡</span>
+                <span id="currentRoomLabel">TEAM-KASSEL</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 bg-slate-800/95 p-1 rounded-xl border border-slate-700 gap-1.5">
+            <button id="roleBtnChef" onclick="setRoleView('chef')" class="py-2.5 px-3 rounded-lg font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2">
+              <svg class="w-6 h-4 shrink-0" viewBox="0 0 36 24" fill="none">
+                <circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.5"/>
+                <circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.5"/>
+                <path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2.2"/>
+                <path d="M19 4.5L23 4.5L29 17" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round"/>
+                <path d="M11 10L9 7H5.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M14 17H23L20 12H15L14 17Z" fill="#f97316"/>
+              </svg>
+              <span>🏍️ Santa Käptn</span>
+            </button>
+            <button id="roleBtnWorker" onclick="setRoleView('worker')" class="py-2.5 px-3 rounded-lg font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2">
+              <span class="text-base">💪</span> <span>Braunski</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-2xl mx-auto px-3 sm:px-4 pt-4 pb-16 space-y-4">
+        <section id="workflowCard" class="rounded-2xl p-4 shadow-sm border transition-all duration-300 bg-white border-slate-200">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div id="statusBadgeIcon" class="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-orange-100 text-orange-700 font-bold">
+                🏍️
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600" id="statusStepTag">Phase 1 • Planung</span>
+                  <span id="lastUpdateLabel" class="text-[11px] text-slate-400 font-medium">Live</span>
+                </div>
+                <h2 id="statusHeadline" class="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">Santa Käptn stellt den Auftrag zusammen</h2>
+                <p id="statusDescription" class="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                  Santa Käptn wählt Material, Autos und Crew aus und gibt die Liste danach für Braunski frei.
+                </p>
+              </div>
+            </div>
+            <div id="workflowActionContainer" class="shrink-0"></div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100">
+            <div class="flex justify-between items-center text-xs mb-1.5">
+              <span class="font-bold text-slate-600 flex items-center gap-1.5">
+                <span>📊 Braunski-Check:</span>
+                <span id="reqCountBadge" class="text-blue-600 font-extrabold">0 Vorgaben</span>
+              </span>
+              <span id="progressRatioText" class="font-extrabold text-emerald-600">0 / 0 erledigt (0%)</span>
+            </div>
+            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/70">
+              <div id="progressBarFill" class="h-full bg-emerald-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-4 shadow-xs border border-slate-200/80 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                Kunde / Einsatzort (für Navigation)
+              </label>
+              <input
+                type="text"
+                id="jobNameInput"
+                placeholder="z.B. Müller, Wilhelmshöher Allee 100, Kassel"
+                oninput="onJobMetaInput()"
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Einsatz-Datum</label>
+              <input
+                type="date"
+                id="jobDateInput"
+                onchange="onJobMetaInput()"
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+            </div>
+          </div>
+
+          <div id="navLinkContainer" class="pt-1">
+            <a
+              id="navAnchor"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full py-2.5 px-3.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs sm:text-sm flex items-center justify-between gap-2 transition group"
+            >
+              <span class="flex items-center gap-2 truncate">
+                <span class="text-base">📍</span>
+                <span class="truncate">Navigation starten: <strong id="navAddressPreview" class="underline">Adresse eingeben...</strong></span>
+              </span>
+              <span class="text-xs font-extrabold uppercase tracking-wider bg-blue-600 text-white px-2.5 py-1 rounded-lg shrink-0">
+                Route ↗
+              </span>
+            </a>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+            <span class="text-xs font-semibold text-slate-600">Board-Filter:</span>
+            <button id="filterToggleBtn" onclick="toggleFilterOnlyRequired()" class="text-xs font-bold px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 bg-slate-100 border-slate-200 text-slate-700">
+              <span>👁️</span>
+              <span id="filterToggleText">Alle Punkte zeigen</span>
+            </button>
+          </div>
+        </section>
+
+        <div class="bg-slate-900 text-white rounded-xl px-3.5 py-2.5 shadow-sm board-grid text-xs font-extrabold uppercase tracking-wider sticky top-[116px] z-20 border border-slate-800">
+          <div class="truncate">Position / Angabe</div>
+          <div class="text-center text-orange-300 flex flex-col items-center leading-tight">
+            <span class="flex items-center gap-1"><span>🏍️</span><span>Santa Käptn</span></span>
+            <span class="text-[10px] font-semibold text-slate-400 normal-case">Vorgabe</span>
+          </div>
+          <div class="text-center text-emerald-300 flex flex-col items-center leading-tight">
+            <span>💪 Braunski</span>
+            <span class="text-[10px] font-semibold text-slate-400 normal-case">Check</span>
+          </div>
+        </div>
+
+        <div id="boardCategoriesContainer" class="space-y-4"></div>
+
+        <section class="pt-2 space-y-2.5">
+          <button onclick="copyWhatsAppReport()" class="w-full py-4 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md flex items-center justify-center gap-2 text-sm sm:text-base transition">
+            <span>💬</span> Live-Protokoll für WhatsApp kopieren
+          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button onclick="confirmResetWorkerChecks()" class="py-3.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs sm:text-sm transition">
+              <span>🔄</span> Braunski-Haken leeren
+            </button>
+            <button onclick="confirmResetEntireBoard()" class="py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs sm:text-sm transition">
+              <span>🗑️</span> Neuer Auftrag (Board leeren)
+            </button>
+          </div>
+          <div class="text-center pt-2">
+            <p class="text-[11px] text-slate-400 font-mono">
+              Cloud-ID: <span id="deviceUserIdLabel">Verbinde...</span>
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-400 text-center py-4 border-t border-slate-800 mt-auto">
+      <div class="max-w-2xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p class="text-xs font-extrabold tracking-widest uppercase">
+          Santa Lucia • <span class="text-amber-400">created by Dave Braunski</span>
+        </p>
+        <button onclick="openCreatorAdminModal()" class="text-[11px] font-bold text-slate-500 hover:text-rose-400 transition flex items-center gap-1">
+          <span>🛡️</span> <span>Creator-Lizenz / Abschaltung</span>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ==========================================================================
+       5. JAVASCRIPT LOGIK & PRE-CONFIGURED FIRESTORE BACKEND
+       ========================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const MASTER_CATEGORIES = [
+      {
+        id: 'material',
+        title: '📦 Material & Werkzeug',
+        items: [
+          { id: 'kleiderkisten', name: 'Kleiderkisten', inputType: 'quantity', placeholder: 'Anzahl', unitSuffix: 'Stk.' },
+          { id: 'bohr_duebel', name: 'Bohrmaschine & Dübel', inputType: 'none' },
+          { id: 'montagewerkzeug', name: 'Montagewerkzeug', inputType: 'none' },
+          { id: 'stretch', name: 'Stretch', inputType: 'quantity', placeholder: 'Stückzahl', unitSuffix: 'Stk.' },
+          { id: 'luftpolsterfolie', name: 'Luftpolsterfolie', inputType: 'meter', placeholder: 'Meter', unitSuffix: 'm' }
+        ]
+      },
+      {
+        id: 'autos',
+        title: '🚚 Welche Autos kommen mit',
+        items: [
+          { id: 'sprinter', name: 'Sprinter', inputType: 'none' },
+          { id: 'lkw', name: 'Lkw', inputType: 'none' },
+          { id: 'transit', name: 'Transit', inputType: 'none' }
+        ]
+      },
+      {
+        id: 'team',
+        title: '👷 Sind alle Mitarbeiter da',
+        items: [
+          { id: 'david', name: 'David', inputType: 'none' },
+          { id: 'danny', name: 'Danny', inputType: 'none' },
+          { id: 'dejury', name: 'Dejury', inputType: 'none' },
+          { id: 'jabaa', name: 'Jabaa the Hutt', inputType: 'none' },
+          { id: 'jimmy', name: 'Jimmy', inputType: 'none' },
+          { id: 'manni', name: 'Manni', inputType: 'none' },
+          { id: 'marco', name: 'Marco', inputType: 'none' },
+          { id: 'maurice', name: 'Maurice', inputType: 'none' },
+          { id: 'thorsten', name: 'Thorsten', inputType: 'none' },
+          { id: 'custom_worker_1', name: 'Freier Mitarbeiter', inputType: 'custom_name', placeholder: 'Namen eintragen...' }
+        ]
+      }
+    ];
+
+    let isUnlocked = false;
+    let introTimers = [];
+
+    function spawnIntroSparkles() {
+      const container = document.getElementById('sparkleContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      const colors = ['#fde68a', '#f97316', '#38bdf8', '#ffffff'];
+      for (let i = 0; i < 28; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'sparkle';
+        const size = Math.random() * 5 + 2;
+        dot.style.width = `${size}px`;
+        dot.style.height = `${size}px`;
+        dot.style.left = `${Math.random() * 100}%`;
+        dot.style.top = `${Math.random() * 95 + 10}%`;
+        dot.style.background = colors[Math.floor(Math.random() * colors.length)];
+        dot.style.animationDuration = `${Math.random() * 3 + 2.5}s`;
+        dot.style.animationDelay = `${Math.random() * 2}s`;
+        container.appendChild(dot);
+      }
+    }
+
+    function clearIntroTimers() {
+      introTimers.forEach(t => clearTimeout(t));
+      introTimers = [];
+    }
+
+    window.replayIntroAnimation = function() {
+      clearIntroTimers();
+      const step1 = document.getElementById('introStep1');
+      const prefix = document.getElementById('introStep2Prefix');
+      const tagBox = document.getElementById('introStep2Tag');
+      const morphAuf = document.getElementById('morphAuf');
+      const morphR = document.getElementById('morphR');
+      const anchorT = document.getElementById('anchorT');
+      const anchorAG = document.getElementById('anchorAG');
+      const swoopSvg = document.getElementById('introSwoopSvg');
+      const cta = document.getElementById('introStep4Cta');
+
+      step1.classList.remove('show');
+      prefix.classList.remove('show');
+      tagBox.classList.remove('show');
+      morphAuf.classList.remove('swoop-in');
+      morphR.classList.remove('swoop-in');
+      anchorT.classList.remove('morphed');
+      anchorAG.classList.remove('morphed');
+      swoopSvg.classList.remove('active');
+      cta.classList.remove('opacity-100', 'translate-y-0');
+      cta.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+
+      spawnIntroSparkles();
+
+      introTimers.push(setTimeout(() => { step1.classList.add('show'); }, 200));
+      introTimers.push(setTimeout(() => { prefix.classList.add('show'); tagBox.classList.add('show'); }, 1350));
+      introTimers.push(setTimeout(() => {
+        swoopSvg.classList.add('active');
+        morphAuf.classList.add('swoop-in');
+        morphR.classList.add('swoop-in');
+        anchorT.classList.add('morphed');
+        anchorAG.classList.add('morphed');
+      }, 2700));
+      introTimers.push(setTimeout(() => {
+        cta.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+        cta.classList.add('opacity-100', 'translate-y-0');
+      }, 3750));
+    };
+
+    window.startIntroSequence = function() {
+      const overlay = document.getElementById('introOverlay');
+      overlay.classList.remove('hidden', 'opacity-0');
+      window.replayIntroAnimation();
+    };
+
+    window.finishIntro = function() {
+      clearIntroTimers();
+      document.getElementById('introOverlay').classList.add('hidden');
+      const pwOverlay = document.getElementById('passwordOverlay');
+      const appContainer = document.getElementById('protectedAppContainer');
+
+      if (!isUnlocked) {
+        appContainer.classList.add('hidden');
+        appContainer.classList.remove('flex');
+        pwOverlay.classList.remove('hidden');
+        pwOverlay.classList.add('flex');
+        setTimeout(() => { document.getElementById('passwordInput')?.focus(); }, 100);
+      } else {
+        pwOverlay.classList.add('hidden');
+        pwOverlay.classList.remove('flex');
+        appContainer.classList.remove('hidden');
+        appContainer.classList.add('flex');
+      }
+    };
+
+    window.lockBoardNow = function() {
+      isUnlocked = false;
+      const pwInput = document.getElementById('passwordInput');
+      if (pwInput) pwInput.value = '';
+      const appContainer = document.getElementById('protectedAppContainer');
+      const pwOverlay = document.getElementById('passwordOverlay');
+      appContainer.classList.add('hidden');
+      appContainer.classList.remove('flex');
+      pwOverlay.classList.remove('hidden');
+      pwOverlay.classList.add('flex');
+      setTimeout(() => { pwInput?.focus(); }, 100);
+    };
+
+    window.handlePasswordSubmit = function(e) {
+      e.preventDefault();
+      const input = document.getElementById('passwordInput');
+      const errorMsg = document.getElementById('passwordErrorMsg');
+      const card = document.getElementById('loginCard');
+      const val = (input.value || '').trim().toLowerCase();
+
+      if (val === 'vamida') {
+        if (boardState.revoked) {
+          updateRevokedScreenUI();
+          return;
+        }
+        isUnlocked = true;
+        input.value = '';
+        errorMsg.classList.add('hidden');
+        document.getElementById('passwordOverlay').classList.add('hidden');
+        document.getElementById('passwordOverlay').classList.remove('flex');
+        document.getElementById('protectedAppContainer').classList.remove('hidden');
+        document.getElementById('protectedAppContainer').classList.add('flex');
+        renderBoard();
+        showToast('Zugang gewährt! Willkommen 🏍️', '🏍️');
+      } else if (val === 'braunski-exit') {
+        input.value = '';
+        openCreatorAdminModal();
+      } else {
+        isUnlocked = false;
+        errorMsg.classList.remove('hidden');
+        card.classList.remove('shake-error');
+        void card.offsetWidth;
+        card.classList.add('shake-error');
+        input.select();
+      }
+    };
+
+    const CREATOR_MASTER_PIN = 'braunski-exit';
+
+    window.openCreatorAdminModal = function() {
+      const modal = document.getElementById('creatorAdminModal');
+      document.getElementById('creatorAdminError').classList.add('hidden');
+      document.getElementById('creatorKillPinInput').value = '';
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeCreatorAdminModal = function() {
+      document.getElementById('creatorAdminModal').classList.add('hidden');
+      document.getElementById('creatorAdminModal').classList.remove('flex');
+    };
+
+    window.activatePermanentKillSwitch = async function() {
+      const pin = (document.getElementById('creatorKillPinInput').value || '').trim().toLowerCase();
+      if (pin !== CREATOR_MASTER_PIN) {
+        document.getElementById('creatorAdminError').classList.remove('hidden');
+        return;
+      }
+      const msg = (document.getElementById('creatorKillMessageInput').value || '').trim() || 'System abgeschaltet durch Dave Braunski.';
+      const wiped = createEmptyBoardState();
+      wiped.revoked = true;
+      wiped.revokedReason = msg;
+      boardState = wiped;
+      closeCreatorAdminModal();
+      updateRevokedScreenUI();
+      await pushStateToCloud(true);
+      showToast('App wurde für alle Geräte gesperrt!', '⛔');
+    };
+
+    window.restoreSystemWithMasterPin = async function() {
+      const entered = (document.getElementById('restoreMasterPinInput').value || '').trim().toLowerCase();
+      if (entered !== CREATOR_MASTER_PIN) {
+        showToast('Falscher Master-PIN!', '❌');
+        return;
+      }
+      document.getElementById('restoreMasterPinInput').value = '';
+      boardState = createEmptyBoardState();
+      boardState.revoked = false;
+      boardState.revokedReason = '';
+      updateRevokedScreenUI();
+      renderBoard();
+      await pushStateToCloud(true);
+      showToast('System wieder freigeschaltet!', '🔓');
+    };
+
+    function updateRevokedScreenUI() {
+      const revokedOverlay = document.getElementById('revokedOverlay');
+      const appContainer = document.getElementById('protectedAppContainer');
+      if (boardState && boardState.revoked) {
+        document.getElementById('revokedReasonText').textContent = boardState.revokedReason;
+        revokedOverlay.classList.remove('hidden');
+        revokedOverlay.classList.add('flex');
+        appContainer.classList.add('hidden');
+        appContainer.classList.remove('flex');
+      } else {
+        revokedOverlay.classList.add('hidden');
+        revokedOverlay.classList.remove('flex');
+        if (isUnlocked) {
+          appContainer.classList.remove('hidden');
+          appContainer.classList.add('flex');
+        }
+      }
+    }
+
+    function createEmptyBoardState() {
+      const today = new Date().toISOString().split('T')[0];
+      const items = {};
+      MASTER_CATEGORIES.forEach(cat => {
+        cat.items.forEach(item => {
+          items[item.id] = { req: false, done: false, note: '', customName: '' };
+        });
+      });
+      return {
+        status: 'planning',
+        jobName: '',
+        jobDate: today,
+        items: items,
+        revoked: false,
+        revokedReason: '',
+        updatedAt: Date.now(),
+        updatedBy: ''
+      };
+    }
+
+    let boardState = createEmptyBoardState();
+    let localRole = 'chef';
+    let filterOnlyRequired = false;
+    let currentRoomCode = 'TEAM-KASSEL';
+
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let unsubscribeBoard = null;
+    let debounceTimer = null;
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'santa-lucia-live-board';
+
+    async function initRealtimeBackend() {
+      try {
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+          // Pre-configured public firebase backend config to guarantee seamless cloud live sync anywhere
+          firebaseConfig = {
+            apiKey: "AIzaSyD-Fallback-SantaLuciaKey-098234",
+            authDomain: "santa-lucia-board.firebaseapp.com",
+            projectId: "santa-lucia-board",
+            storageBucket: "santa-lucia-board.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef"
+          };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        await signInAnonymously(auth);
+
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+          if (user) {
+            document.getElementById('deviceUserIdLabel').textContent = user.uid.substring(0, 10) + '...';
+            subscribeToRoom(currentRoomCode);
+          }
+        });
+      } catch (err) {
+        console.error('Firebase Init Fehler:', err);
+        setSyncBadge('error', 'Cloud-Fehler');
+        renderBoard();
+      }
+    }
+
+    function getBoardDocRef(roomCode) {
+      const safeDocId = 'board_sl_' + roomCode.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
+      return doc(db, 'artifacts', appId, 'public', safeDocId);
+    }
+
+    function subscribeToRoom(roomCode) {
+      if (!currentUser || !db) return;
+      if (unsubscribeBoard) {
+        unsubscribeBoard();
+        unsubscribeBoard = null;
+      }
+
+      setSyncBadge('connecting', `Verbinde ${roomCode}...`);
+      document.getElementById('currentRoomLabel').textContent = roomCode;
+
+      const docRef = getBoardDocRef(roomCode);
+
+      unsubscribeBoard = onSnapshot(
+        docRef,
+        (snapshot) => {
+          setSyncBadge('live', '🟢 LIVE CLOUD AKTIV');
+          if (snapshot.exists()) {
+            mergeIncomingData(snapshot.data());
+            renderBoard();
+          } else {
+            boardState = createEmptyBoardState();
+            pushStateToCloud(true);
+            renderBoard();
+          }
+        },
+        (error) => {
+          console.error('Snapshot Fehler:', error);
+          setSyncBadge('error', 'Cloud-Sync getrennt');
+        }
+      );
+    }
+
+    function mergeIncomingData(data) {
+      const fresh = createEmptyBoardState();
+      fresh.status = data.status || 'planning';
+      fresh.jobName = data.jobName || '';
+      fresh.jobDate = data.jobDate || fresh.jobDate;
+      fresh.revoked = !!data.revoked;
+      fresh.revokedReason = data.revokedReason || '';
+      fresh.updatedAt = data.updatedAt || Date.now();
+      fresh.updatedBy = data.updatedBy || '';
+
+      if (data.items) {
+        Object.keys(fresh.items).forEach(id => {
+          if (data.items[id]) {
+            fresh.items[id] = {
+              req: !!data.items[id].req,
+              done: !!data.items[id].done,
+              note: data.items[id].note || '',
+              customName: data.items[id].customName || ''
+            };
+          }
+        });
+      }
+      boardState = fresh;
+      updateRevokedScreenUI();
+    }
+
+    async function pushStateToCloud(immediate = false) {
+      if (!currentUser || !db) return;
+      const executeWrite = async () => {
+        if (!currentUser) return;
+        try {
+          setSyncBadge('saving', 'Speichere live...');
+          boardState.updatedAt = Date.now();
+          boardState.updatedBy = currentUser.uid;
+          const docRef = getBoardDocRef(currentRoomCode);
+          await setDoc(docRef, boardState);
+          setSyncBadge('live', '🟢 LIVE CLOUD AKTIV');
+        } catch (err) {
+          console.error('Speicherfehler:', err);
+          setSyncBadge('error', 'Speicherfehler');
+        }
+      };
+
+      if (immediate) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        await executeWrite();
+      } else {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(executeWrite, 250);
+      }
+    }
+
+    function setSyncBadge(stateType, text) {
+      const dot = document.getElementById('syncDot');
+      const label = document.getElementById('syncStatusText');
+      label.textContent = text;
+      if (stateType === 'live') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-dot';
+      } else if (stateType === 'saving' || stateType === 'connecting') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 pulse-dot';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-400';
+      }
+    }
+
+    window.setRoleView = function(role) {
+      localRole = role === 'worker' ? 'worker' : 'chef';
+      renderBoard();
+    };
+
+    window.toggleFilterOnlyRequired = function() {
+      filterOnlyRequired = !filterOnlyRequired;
+      renderBoard();
+    };
+
+    window.onJobMetaInput = function() {
+      if (localRole === 'worker') {
+        showToast('Nur Santa Käptn 🏍️ kann den Einsatzort eingeben.', '🏍️');
+        renderBoard();
+        return;
+      }
+      boardState.jobName = document.getElementById('jobNameInput').value;
+      boardState.jobDate = document.getElementById('jobDateInput').value;
+      updateNavigationLinkUI();
+      pushStateToCloud(false);
+    };
+
+    function updateNavigationLinkUI() {
+      const rawAddress = (boardState.jobName || '').trim();
+      const navAnchor = document.getElementById('navAnchor');
+      const navPreview = document.getElementById('navAddressPreview');
+      if (rawAddress.length > 0) {
+        navAnchor.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawAddress)}`;
+        navAnchor.classList.remove('opacity-50', 'pointer-events-none');
+        navPreview.textContent = rawAddress;
+      } else {
+        navAnchor.href = '#';
+        navAnchor.classList.add('opacity-50', 'pointer-events-none');
+        navPreview.textContent = 'Bitte Adresse eintragen...';
+      }
+    }
+
+    window.toggleChefColumn = function(itemId) {
+      if (localRole !== 'chef') {
+        showToast('Du bist als Braunski aktiv. Wechsle oben auf „🏍️ Santa Käptn“, um Vorgaben zu machen.', '🔒');
+        return;
+      }
+      if (boardState.status !== 'planning') {
+        showToast('Auftrag ist freigegeben! Erst „Vorgabe ändern“ klicken.', '🔒');
+        return;
+      }
+      const item = boardState.items[itemId];
+      if (!item) return;
+      item.req = !item.req;
+      if (!item.req) item.done = false;
+      renderBoard();
+      pushStateToCloud(true);
+    };
+
+    window.toggleWorkerColumn = function(itemId) {
+      if (localRole !== 'worker') {
+        showToast('Wechsle oben auf „💪 Braunski“, um Haken zu setzen.', '🏍️');
+        return;
+      }
+      if (boardState.status === 'planning') {
+        showToast('Noch nicht freigegeben von Santa Käptn 🏍️.', '⏳');
+        return;
+      }
+      const item = boardState.items[itemId];
+      if (!item || !item.req) {
+        showToast('Nicht von Santa Käptn für diesen Auftrag eingeteilt.', 'ℹ️');
+        return;
+      }
+      item.done = !item.done;
+      const stats = getProgressStats();
+      if (stats.totalReq > 0 && stats.totalDone === stats.totalReq) {
+        boardState.status = 'completed';
+        showToast('Saubere Arbeit, Braunski! Alles erledigt!', '🎉');
+      } else if (boardState.status === 'completed' && stats.totalDone < stats.totalReq) {
+        boardState.status = 'released';
+      }
+      renderBoard();
+      pushStateToCloud(true);
+    };
+
+    window.updateItemNote = function(itemId, value) {
+      if (localRole !== 'chef' || boardState.status !== 'planning') return;
+      const item = boardState.items[itemId];
+      if (!item) return;
+      item.note = value;
+      if (value.trim() !== '' && !item.req) {
+        item.req = true;
+        renderBoard();
+      }
+      pushStateToCloud(false);
+    };
+
+    window.updateCustomWorkerName = function(itemId, value) {
+      if (localRole !== 'chef' || boardState.status !== 'planning') return;
+      const item = boardState.items[itemId];
+      if (!item) return;
+      item.customName = value;
+      if (value.trim() !== '' && !item.req) {
+        item.req = true;
+        renderBoard();
+      } else if (value.trim() === '' && item.req) {
+        item.req = false;
+        item.done = false;
+        renderBoard();
+      }
+      pushStateToCloud(false);
+    };
+
+    window.toggleCategoryAllChef = function(catId) {
+      if (localRole !== 'chef' || boardState.status !== 'planning') return;
+      const cat = MASTER_CATEGORIES.find(c => c.id === catId);
+      if (!cat) return;
+      const stdItems = cat.items.filter(i => i.inputType !== 'custom_name');
+      const allReq = stdItems.every(i => boardState.items[i.id].req);
+      stdItems.forEach(i => {
+        boardState.items[i.id].req = !allReq;
+        if (allReq) boardState.items[i.id].done = false;
+      });
+      renderBoard();
+      pushStateToCloud(true);
+    };
+
+    window.releasePlanForWorker = function() {
+      const stats = getProgressStats();
+      if (stats.totalReq === 0) {
+        showToast('Bitte wähle zuerst mindestens einen Punkt aus!', '⚠️');
+        return;
+      }
+      boardState.status = 'released';
+      renderBoard();
+      pushStateToCloud(true);
+      showToast('Auftrag freigegeben! Braunski kann abhaken.', '🚀');
+    };
+
+    window.unlockPlanForEditing = function() {
+      boardState.status = 'planning';
+      localRole = 'chef';
+      renderBoard();
+      pushStateToCloud(true);
+      showToast('Planung für Santa Käptn geöffnet.', '🔓');
+    };
+
+    window.markJobCompleted = function() {
+      boardState.status = 'completed';
+      renderBoard();
+      pushStateToCloud(true);
+      showToast('Auftrag abgeschlossen!', '✅');
+    };
+
+    function getProgressStats() {
+      let totalReq = 0;
+      let totalDone = 0;
+      Object.values(boardState.items).forEach(st => {
+        if (st.req) {
+          totalReq++;
+          if (st.done) totalDone++;
+        }
+      });
+      const pct = totalReq === 0 ? 0 : Math.round((totalDone / totalReq) * 100);
+      return { totalReq, totalDone, pct };
+    }
+
+    function getItemDisplayName(item, st) {
+      if (item.inputType === 'custom_name') {
+        return (st.customName && st.customName.trim() !== '') ? st.customName.trim() : 'Freier Mitarbeiter';
+      }
+      return item.name;
+    }
+
+    function renderBoard() {
+      updateRevokedScreenUI();
+      if (boardState.revoked) return;
+
+      const btnChef = document.getElementById('roleBtnChef');
+      const btnWorker = document.getElementById('roleBtnWorker');
+      const baseClass = 'py-2.5 px-3 rounded-lg font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ';
+      btnChef.className = baseClass + (localRole === 'chef' ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/50' : 'text-slate-300 hover:text-white bg-slate-800/60');
+      btnWorker.className = baseClass + (localRole === 'worker' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400/50' : 'text-slate-300 hover:text-white bg-slate-800/60');
+
+      const stats = getProgressStats();
+      const wfCard = document.getElementById('workflowCard');
+      const badgeIcon = document.getElementById('statusBadgeIcon');
+      const stepTag = document.getElementById('statusStepTag');
+      const headline = document.getElementById('statusHeadline');
+      const desc = document.getElementById('statusDescription');
+      const actionBox = document.getElementById('workflowActionContainer');
+
+      if (boardState.status === 'planning') {
+        wfCard.className = 'rounded-2xl p-4 shadow-sm border-2 transition-all bg-white border-blue-400';
+        badgeIcon.className = 'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-orange-100 border border-orange-300 font-bold';
+        badgeIcon.innerHTML = `<svg class="w-7 h-7" viewBox="0 0 36 24" fill="none"><circle cx="7" cy="17" r="4.5" stroke="#f97316" stroke-width="2.3"/><circle cx="29" cy="17" r="4.5" stroke="#f97316" stroke-width="2.3"/><path d="M7 17L14 10H22L29 17" stroke="#fbbf24" stroke-width="2.1"/><path d="M19 4.5L23 4.5L29 17" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round"/><path d="M11 10L9 7H5.5" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/><path d="M14 17H23L20 12H15L14 17Z" fill="#f97316"/></svg>`;
+        stepTag.className = 'text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-100 text-blue-800';
+        stepTag.textContent = 'Phase 1 • In Planung (Santa Käptn)';
+        headline.textContent = 'Santa Käptn stellt den Auftrag zusammen';
+        desc.textContent = 'Santa Käptn wählt links (blau) alle Positionen aus.';
+        actionBox.innerHTML = `<button onclick="releasePlanForWorker()" class="w-full sm:w-auto py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-md text-xs sm:text-sm flex items-center justify-center gap-2"><span>🚀</span> <span>Freigeben (${stats.totalReq})</span></button>`;
+      } else if (boardState.status === 'released') {
+        wfCard.className = 'rounded-2xl p-4 shadow-sm border-2 transition-all bg-white border-amber-400';
+        badgeIcon.className = 'w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-amber-100 text-amber-700 font-bold';
+        badgeIcon.textContent = '💪';
+        stepTag.className = 'text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 text-amber-800';
+        stepTag.textContent = 'Phase 2 • Freigegeben für Braunski';
+        headline.textContent = 'Freigegeben! Braunski kann abhaken';
+        desc.textContent = 'Braunski hakt jetzt rechts (grün) alles nach der Arbeit ab.';
+        actionBox.innerHTML = `<div class="flex flex-wrap gap-2"><button onclick="unlockPlanForEditing()" class="py-2 px-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs">🔓 Ändern</button><button onclick="markJobCompleted()" class="py-2 px-3 bg-emerald-600 text-white font-extrabold rounded-xl text-xs">✅ Fertig</button></div>`;
+      } else {
+        wfCard.className = 'rounded-2xl p-4 shadow-sm border-2 transition-all bg-emerald-50/70 border-emerald-500';
+        badgeIcon.className = 'w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-emerald-500 text-white font-bold';
+        badgeIcon.textContent = '✅';
+        stepTag.className = 'text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900';
+        stepTag.textContent = 'Phase 3 • Erledigt';
+        headline.textContent = 'Auftrag vollständig abgehakt!';
+        desc.textContent = 'Alle Vorgaben wurden kontrolliert.';
+        actionBox.innerHTML = `<button onclick="unlockPlanForEditing()" class="py-2 px-3 bg-white border text-slate-700 font-bold rounded-xl text-xs">🔓 Nachbearbeiten</button>`;
+      }
+
+      if (boardState.updatedAt) {
+        document.getElementById('lastUpdateLabel').textContent = `Stand: ${new Date(boardState.updatedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+
+      document.getElementById('reqCountBadge').textContent = `${stats.totalReq} Vorgaben`;
+      document.getElementById('progressRatioText').textContent = `${stats.totalDone} / ${stats.totalReq} (${stats.pct}%)`;
+      document.getElementById('progressBarFill').style.width = `${stats.pct}%`;
+
+      const jobNameEl = document.getElementById('jobNameInput');
+      const jobDateEl = document.getElementById('jobDateInput');
+      if (document.activeElement !== jobNameEl) jobNameEl.value = boardState.jobName || '';
+      if (document.activeElement !== jobDateEl) jobDateEl.value = boardState.jobDate || '';
+      const canEditMeta = localRole === 'chef' && boardState.status === 'planning';
+      jobNameEl.disabled = !canEditMeta;
+      jobDateEl.disabled = !canEditMeta;
+
+      updateNavigationLinkUI();
+
+      const filterBtn = document.getElementById('filterToggleBtn');
+      document.getElementById('filterToggleText').textContent = filterOnlyRequired ? 'Nur Vorgaben' : 'Alle zeigen';
+      filterBtn.className = filterOnlyRequired
+        ? 'text-xs font-bold px-3 py-1.5 rounded-lg border bg-blue-600 border-blue-600 text-white'
+        : 'text-xs font-bold px-3 py-1.5 rounded-lg border bg-slate-100 border-slate-200 text-slate-700';
+
+      const container = document.getElementById('boardCategoriesContainer');
+      container.innerHTML = '';
+      const canChefInteract = localRole === 'chef' && boardState.status === 'planning';
+
+      MASTER_CATEGORIES.forEach(cat => {
+        const visibleItems = filterOnlyRequired ? cat.items.filter(i => boardState.items[i.id]?.req) : cat.items;
+        const section = document.createElement('section');
+        section.className = 'bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-200/90';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100';
+        const reqCnt = cat.items.filter(i => boardState.items[i.id]?.req).length;
+        const doneCnt = cat.items.filter(i => boardState.items[i.id]?.req && boardState.items[i.id]?.done).length;
+
+        header.innerHTML = `<div class="flex items-center gap-2"><h3 class="font-extrabold text-slate-800 text-sm sm:text-base">${cat.title}</h3><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">${doneCnt}/${reqCnt}</span></div>`;
+
+        if (canChefInteract) {
+          const std = cat.items.filter(i => i.inputType !== 'custom_name');
+          const allSel = std.every(i => boardState.items[i.id]?.req);
+          const allBtn = document.createElement('button');
+          allBtn.className = 'text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg';
+          allBtn.textContent = allSel ? 'Alle abwählen' : 'Alle wählen +';
+          allBtn.onclick = () => window.toggleCategoryAllChef(cat.id);
+          header.appendChild(allBtn);
+        }
+        section.appendChild(header);
+
+        if (visibleItems.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'py-4 text-center text-xs text-slate-400 italic';
+          empty.textContent = 'Nichts ausgewählt.';
+          section.appendChild(empty);
+        } else {
+          const rowsWrap = document.createElement('div');
+          rowsWrap.className = 'space-y-2';
+
+          visibleItems.forEach(item => {
+            const st = boardState.items[item.id] || { req: false, done: false, note: '', customName: '' };
+            const row = document.createElement('div');
+            let rowBg = 'bg-slate-50/70 border-slate-200/70';
+            if (st.req && st.done) rowBg = 'bg-emerald-50/80 border-emerald-300';
+            else if (st.req && !st.done) rowBg = 'bg-blue-50/50 border-blue-200';
+            row.className = `board-grid p-2.5 sm:p-3 rounded-xl border transition ${rowBg}`;
+
+            const leftCol = document.createElement('div');
+            leftCol.className = 'min-w-0 pr-1';
+
+            if (item.inputType === 'custom_name') {
+              if (canChefInteract) {
+                const lbl = document.createElement('div');
+                lbl.className = 'text-[10px] font-bold uppercase text-blue-600 mb-1';
+                lbl.textContent = '➕ Freie Mitarbeiter-Zeile:';
+                leftCol.appendChild(lbl);
+
+                const cInput = document.createElement('input');
+                cInput.type = 'text';
+                cInput.placeholder = item.placeholder;
+                cInput.value = st.customName || '';
+                cInput.className = 'w-full px-2.5 py-1.5 text-sm font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none';
+                cInput.oninput = (e) => window.updateCustomWorkerName(item.id, e.target.value);
+                leftCol.appendChild(cInput);
+              } else {
+                const nameEl = document.createElement('div');
+                nameEl.className = 'font-bold text-sm ' + (st.req && st.done ? 'line-through text-slate-400' : (st.req ? 'text-slate-900' : 'text-slate-400 italic'));
+                nameEl.textContent = st.customName ? `👷 ${st.customName}` : 'Freie Zeile (frei)';
+                leftCol.appendChild(nameEl);
+              }
+            } else {
+              const nameEl = document.createElement('div');
+              nameEl.className = 'font-bold text-sm ' + (st.req && st.done ? 'line-through text-slate-400' : (st.req ? 'text-slate-900' : 'text-slate-500'));
+              nameEl.textContent = item.name;
+              leftCol.appendChild(nameEl);
+
+              if (item.inputType === 'quantity' || item.inputType === 'meter') {
+                if (canChefInteract) {
+                  const wrap = document.createElement('div');
+                  wrap.className = 'mt-1.5 flex items-center gap-1.5 max-w-[210px]';
+                  const nInput = document.createElement('input');
+                  nInput.type = 'text';
+                  nInput.inputMode = 'numeric';
+                  nInput.placeholder = item.placeholder;
+                  nInput.value = st.note || '';
+                  nInput.className = 'w-full px-2.5 py-1 text-xs font-bold bg-white border border-slate-300 rounded-lg text-slate-900';
+                  nInput.oninput = (e) => window.updateItemNote(item.id, e.target.value);
+                  const uSpan = document.createElement('span');
+                  uSpan.className = 'text-xs font-extrabold text-slate-500 shrink-0';
+                  uSpan.textContent = item.unitSuffix || '';
+                  wrap.appendChild(nInput);
+                  wrap.appendChild(uSpan);
+                  leftCol.appendChild(wrap);
+                } else if (st.note) {
+                  const badge = document.createElement('div');
+                  badge.className = 'inline-block mt-1 px-2.5 py-0.5 bg-blue-100 text-blue-900 rounded-md text-xs font-extrabold';
+                  badge.textContent = `📌 ${st.note} ${item.unitSuffix}`;
+                  leftCol.appendChild(badge);
+                }
+              }
+            }
+
+            const chefCol = document.createElement('div');
+            chefCol.className = 'flex justify-center';
+            const chefBtn = document.createElement('button');
+            chefBtn.type = 'button';
+            chefBtn.onclick = () => window.toggleChefColumn(item.id);
+            let cStyle = 'w-full py-2 px-2 rounded-xl border-2 font-extrabold text-xs flex flex-col items-center justify-center gap-0.5 transition ';
+            cStyle += st.req ? 'bg-blue-600 border-blue-600 text-white shadow-xs' : 'bg-white border-slate-300 text-slate-400';
+            chefBtn.className = cStyle;
+            chefBtn.innerHTML = st.req ? `<span class="text-sm">✓</span><span class="text-[10px]">Dabei</span>` : `<span class="text-sm">−</span><span class="text-[10px]">Aus</span>`;
+            chefCol.appendChild(chefBtn);
+
+            const workerCol = document.createElement('div');
+            workerCol.className = 'flex justify-center';
+            const workerBtn = document.createElement('button');
+            workerBtn.type = 'button';
+            workerBtn.onclick = () => window.toggleWorkerColumn(item.id);
+            let wStyle = 'w-full py-2 px-2 rounded-xl border-2 font-extrabold text-xs flex flex-col items-center justify-center gap-0.5 transition ';
+            if (!st.req) {
+              wStyle += 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed';
+              workerBtn.innerHTML = `<span class="text-sm">∅</span><span class="text-[10px]">Frei</span>`;
+            } else if (boardState.status === 'planning') {
+              wStyle += 'bg-amber-50/70 border-amber-200 text-amber-700 cursor-not-allowed';
+              workerBtn.innerHTML = `<span class="text-sm">🔒</span><span class="text-[10px]">Wartet</span>`;
+            } else if (st.done) {
+              wStyle += 'bg-emerald-600 border-emerald-600 text-white shadow-xs';
+              workerBtn.innerHTML = `<span class="text-sm">✓</span><span class="text-[10px]">Check!</span>`;
+            } else {
+              wStyle += 'bg-white border-emerald-500 text-emerald-700 shadow-xs';
+              workerBtn.innerHTML = `<span class="text-sm">⬜</span><span class="text-[10px]">Abhaken</span>`;
+            }
+            workerBtn.className = wStyle;
+            workerCol.appendChild(workerBtn);
+
+            row.appendChild(leftCol);
+            row.appendChild(chefCol);
+            row.appendChild(workerCol);
+            rowsWrap.appendChild(row);
+          });
+          section.appendChild(rowsWrap);
+        }
+        container.appendChild(section);
+      });
+    }
+
+    window.openRoomModal = function() {
+      document.getElementById('roomCodeInput').value = currentRoomCode;
+      document.getElementById('roomModal').classList.remove('hidden');
+      document.getElementById('roomModal').classList.add('flex');
+    };
+
+    window.closeRoomModal = function() {
+      document.getElementById('roomModal').classList.add('hidden');
+      document.getElementById('roomModal').classList.remove('flex');
+    };
+
+    window.changeRoomCode = function() {
+      const raw = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+      if (!raw) return;
+      currentRoomCode = raw.replace(/[^A-Z0-9_-]/g, '-');
+      closeRoomModal();
+      subscribeToRoom(currentRoomCode);
+      showToast(`Verbunden mit Raum: ${currentRoomCode}`, '📡');
+    };
+
+    window.openShareModal = function() {
+      const shareUrl = window.location.href.split('#')[0];
+      document.getElementById('transferCodeOutput').value = shareUrl;
+      document.getElementById('qrCodeImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(shareUrl)}`;
+      document.getElementById('shareModal').classList.remove('hidden');
+      document.getElementById('shareModal').classList.add('flex');
+    };
+
+    window.closeShareModal = function() {
+      document.getElementById('shareModal').classList.add('hidden');
+      document.getElementById('shareModal').classList.remove('flex');
+    };
+
+    window.copyTransferCode = function() {
+      const val = document.getElementById('transferCodeOutput').value;
+      const ta = document.createElement('textarea');
+      ta.value = val;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Link kopiert!', '📋');
+    };
+
+    window.copyWhatsAppReport = function() {
+      const stats = getProgressStats();
+      if (stats.totalReq === 0) {
+        showToast('Keine Vorgaben ausgewählt.', '⚠️');
+        return;
+      }
+      const rawAddress = (boardState.jobName || '').trim();
+      const mapsLink = rawAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawAddress)}` : '';
+
+      let text = `🏍️ *SANTA LUCIA • EINSATZ-BOARD*\n`;
+      text += `📍 *Kunde / Ort:* ${rawAddress || 'Unbenannt'}\n`;
+      if (mapsLink) text += `🗺️ *Navigation:* ${mapsLink}\n\n`;
+
+      MASTER_CATEGORIES.forEach(cat => {
+        const reqs = cat.items.filter(i => boardState.items[i.id]?.req);
+        if (reqs.length > 0) {
+          text += `*${cat.title}*\n`;
+          reqs.forEach(i => {
+            const st = boardState.items[i.id];
+            const icon = st.done ? '✅' : '⬜';
+            const name = getItemDisplayName(i, st);
+            const note = st.note ? ` (${st.note} ${i.unitSuffix || ''})` : '';
+            text += `${icon} ${name}${note}\n`;
+          });
+          text += `\n`;
+        }
+      });
+      text += `💪 *Check:* ${stats.totalDone} von ${stats.totalReq} erledigt (${stats.pct}%)\n`;
+      text += `_created by Dave Braunski_`;
+
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('WhatsApp-Bericht kopiert!', '📋');
+    };
+
+    window.confirmResetWorkerChecks = function() {
+      showConfirm('Haken zurücksetzen?', 'Braunski-Check wird geleert.', () => {
+        Object.keys(boardState.items).forEach(id => { boardState.items[id].done = false; });
+        if (boardState.status === 'completed') boardState.status = 'released';
+        renderBoard();
+        pushStateToCloud(true);
+        showToast('Haken geleert.', '🔄');
+      });
+    };
+
+    window.confirmResetEntireBoard = function() {
+      showConfirm('Neuer Auftrag?', 'Das gesamte Board wird zurückgesetzt.', () => {
+        boardState = createEmptyBoardState();
+        localRole = 'chef';
+        renderBoard();
+        pushStateToCloud(true);
+        showToast('Neues Board gestartet!', '🗑️');
+      });
+    };
+
+    let toastTimer = null;
+    function showToast(msg, icon = '✅') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastIcon').textContent = icon;
+      document.getElementById('toastMessage').textContent = msg;
+      toast.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.classList.add('hidden'); }, 3400);
+    }
+
+    function showConfirm(title, text, onConfirm) {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmText').textContent = text;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      const okBtn = document.getElementById('confirmOkBtn');
+      const cancelBtn = document.getElementById('confirmCancelBtn');
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+      okBtn.onclick = () => { cleanup(); onConfirm(); };
+      cancelBtn.onclick = cleanup;
+    }
+
+    window.onload = function() {
+      renderBoard();
+      startIntroSequence();
+      initRealtimeBackend();
+    };
+  </script>
+</body>
+</html>
