@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Santa Lucia Live-Board</title>
+  
+  <!-- Paho MQTT WebSocket Client für zuverlässigen Live-Sync ohne Auth-Barrieren -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #131b2e;
+      --card-border: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #f97316; /* Harley Orange */
+      --accent-glow: rgba(249, 115, 22, 0.35);
+      --success: #22c55e;
+      --danger: #ef4444;
+      --chef-blue: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* INTRO OVERLAY */
+    #introOverlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #1e1b4b 0%, #050510 100%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+      transition: opacity 0.6s ease;
+    }
+
+    .intro-title {
+      font-size: 2.8rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 25px rgba(249, 115, 22, 0.8);
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+      animation: pulseTitle 2s infinite alternate;
+    }
+
+    .intro-sub {
+      font-size: 1.4rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .word-box {
+      display: inline-flex;
+      font-weight: 800;
+      font-size: 1.6rem;
+      color: var(--accent);
+    }
+
+    .letter-morph {
+      display: inline-block;
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .created-tag {
+      position: absolute;
+      bottom: 25px;
+      font-size: 0.85rem;
+      color: #64748b;
+      letter-spacing: 1px;
+    }
+
+    /* AUTH SCREEN */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px 20px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .auth-card h2 {
+      margin-bottom: 8px;
+      font-size: 1.3rem;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 12px;
+      background: #0b1120;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1.1rem;
+      text-align: center;
+      margin: 18px 0;
+      outline: none;
+    }
+
+    .auth-input:focus {
+      border-color: var(--accent);
+    }
+
+    /* KILL SCREEN */
+    #killOverlay {
+      position: fixed;
+      inset: 0;
+      background: #450a0a;
+      z-index: 10000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+    }
+
+    /* MAIN APP */
+    #appContainer {
+      display: none;
+      flex: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 12px;
+    }
+
+    header {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+    }
+
+    .cloud-pill {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: #1e293b;
+      font-weight: 600;
+    }
+
+    /* ROLES */
+    .role-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: #090d16;
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .role-btn {
+      padding: 10px 6px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .role-btn.active.chef {
+      background: var(--accent);
+      color: white;
+    }
+
+    .role-btn.active.worker {
+      background: var(--success);
+      color: white;
+    }
+
+    /* META INPUTS */
+    .meta-box {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px;
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: #1e293b;
+      color: #38bdf8;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    /* STATUS BANNER */
+    .status-banner {
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-draft { background: #334155; color: #cbd5e1; }
+    .status-ready { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+
+    /* TABLE HEAD */
+    .table-head {
+      display: grid;
+      grid-template-columns: 1fr 65px 65px;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* CARDS & ITEMS */
+    .category-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .category-title {
+      padding: 10px 12px;
+      background: #182238;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr 65px 65px;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #1a2333;
+      cursor: pointer;
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .item-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .item-subinput {
+      background: #090d16;
+      border: 1px solid #334155;
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      width: 90px;
+    }
+
+    .badge-sub {
+      font-size: 0.75rem;
+      color: #f97316;
+      font-weight: 700;
+    }
+
+    .check-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #0b1120;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .check-cell.chef-active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .check-cell.worker-active {
+      background: var(--success);
+      color: white;
+    }
+
+    .check-cell.locked {
+      background: #1e293b;
+      color: #475569;
+      cursor: not-allowed;
+    }
+
+    /* BUTTONS */
+    .btn {
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-release { background: var(--accent); color: white; }
+    .btn-whatsapp { background: #22c55e; color: white; }
+    .btn-reset { background: #334155; color: #94a3b8; }
+
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #475569;
+      padding: 15px;
+      margin-top: auto;
+    }
+
+    .kill-link {
+      color: #64748b;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.75rem;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    @keyframes pulseTitle {
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(249,115,22,0.4)); }
+      100% { transform: scale(1.03); filter: drop-shadow(0 0 25px rgba(249,115,22,0.9)); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- INTRO -->
+  <div id="introOverlay">
+    <div class="intro-title">Santa Lucia</div>
+    <div class="intro-sub">
+      <span>... ein neuer</span>
+      <span class="word-box">
+        <span class="letter-morph" id="aufPart" style="opacity:0; transform:translateX(-10px);">AUF</span>TAG<span class="letter-morph" id="rPart" style="opacity:0; transform:scale(0);">R</span>
+      </span>
+    </div>
+    <div class="created-tag">created by Dave Braunski</div>
+  </div>
+
+  <!-- PASSWORD GATE -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <div style="font-size: 2.2rem; margin-bottom: 10px;">🏍️</div>
+      <h2>Santa Lucia Live-Board</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">Passwort für Zugriff eingeben</p>
+      <input type="password" id="passInput" class="auth-input" placeholder="Passwort...">
+      <button class="btn btn-release" onclick="verifyPassword()">Board betreten</button>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 15px;">created by Dave Braunski</div>
+    </div>
+  </div>
+
+  <!-- KILL SCREEN -->
+  <div id="killOverlay">
+    <div style="font-size: 3rem; margin-bottom: 10px;">⛔</div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 10px; color: #fca5a5;">SYSTEM DAUERHAFT GESPERRT</h2>
+    <p style="color: #cbd5e1; max-width: 400px; font-size: 0.95rem;">
+      Die Lizenz und der Zugriff auf das Santa Lucia Einsatz-Board wurden vom Entwickler (Dave Braunski) unwiderruflich entzogen.
+    </p>
+    <div style="margin-top: 25px; font-size: 0.8rem; color: #991b1b; font-weight: 700;">
+      ERR_LICENSE_REVOKED_BY_CREATOR
+    </div>
+  </div>
+
+  <!-- MAIN BOARD -->
+  <div id="appContainer">
+    <header>
+      <div class="header-top">
+        <div class="brand">
+          <span style="font-size: 1.3rem;">🏍️</span>
+          <div>
+            <h1>SANTA LUCIA</h1>
+            <span style="font-size: 0.7rem; color: var(--accent); font-weight: 700;">HARLEY-BOARD</span>
+          </div>
+        </div>
+        <div id="cloudBadge" class="cloud-pill" style="color: #eab308;">Verbinde Cloud...</div>
+      </div>
+
+      <div class="role-bar">
+        <button id="roleChefBtn" class="role-btn active chef" onclick="setRole('chef')">
+          🏍️ Santa Käptn
+        </button>
+        <button id="roleWorkerBtn" class="role-btn worker" onclick="setRole('worker')">
+          💪 Braunski
+        </button>
+      </div>
+    </header>
+
+    <!-- JOB INFO -->
+    <div class="meta-box">
+      <input type="text" id="jobCustomer" class="input-field" placeholder="Kunde / Einsatzort..." oninput="updateJobMeta()">
+      <div style="display: flex; gap: 8px;">
+        <input type="date" id="jobDate" class="input-field" style="width: 140px;" onchange="updateJobMeta()">
+        <a id="navLink" href="#" target="_blank" class="nav-btn" style="flex: 1; display: none;">
+          📍 Navigation starten
+        </a>
+      </div>
+    </div>
+
+    <!-- STATUS -->
+    <div id="statusBanner" class="status-banner status-draft">
+      <span id="statusText">Santa Käptn stellt Auftrag zusammen</span>
+      <span id="progressText">0 / 0</span>
+    </div>
+
+    <!-- LIST HEADER -->
+    <div class="table-head">
+      <div>Position</div>
+      <div style="text-align: center;">Käptn</div>
+      <div style="text-align: center;">Braunski</div>
+    </div>
+
+    <!-- ITEMS -->
+    <div id="categoriesList"></div>
+
+    <!-- ACTIONS -->
+    <div style="margin-top: 15px;">
+      <button id="btnRelease" class="btn btn-release" onclick="releaseOrder()">
+        🚀 Auftrag für Braunski freigeben
+      </button>
+      <button class="btn btn-whatsapp" onclick="shareWhatsApp()">
+        💬 Status für WhatsApp kopieren
+      </button>
+      <button class="btn btn-reset" onclick="resetBoard()">
+        🔄 Haken für neuen Auftrag leeren
+      </button>
+    </div>
+
+    <footer>
+      Santa Lucia • created by Dave Braunski<br>
+      <span class="kill-link" onclick="triggerKillPrompt()">🛡️ Creator-Lizenz / Kill-Switch</span>
+    </footer>
+  </div>
+
+  <script>
+    // --- STAMMDATEN ---
+    const DEFAULT_DATA = {
+      isReleased: false,
+      isKilled: false,
+      customer: "",
+      date: new Date().toISOString().split("T")[0],
+      categories: [
+        {
+          name: "📦 Material & Werkzeug",
+          items: [
+            { id: "kisten", name: "Kleiderkisten", noteType: "Anzahl", noteVal: "", chef: false, worker: false },
+            { id: "bohr_duebel", name: "Bohrmaschine & Dübel", chef: false, worker: false },
+            { id: "montagewerkzeug", name: "Montagewerkzeug", chef: false, worker: false },
+            { id: "stretch", name: "Stretch", noteType: "Anzahl", noteVal: "", chef: false, worker: false },
+            { id: "luftpolster", name: "Luftpolsterfolie", noteType: "Meter (m)", noteVal: "", chef: false, worker: false }
+          ]
+        },
+        {
+          name: "🚚 Fahrzeuge",
+          items: [
+            { id: "sprinter", name: "Sprinter", chef: false, worker: false },
+            { id: "lkw", name: "Lkw", chef: false, worker: false },
+            { id: "transit", name: "Transit", chef: false, worker: false }
+          ]
+        },
+        {
+          name: "👷 Mitarbeiter",
+          items: [
+            { id: "m_david", name: "David", chef: false, worker: false },
+            { id: "m_danny", name: "Danny", chef: false, worker: false },
+            { id: "m_dejury", name: "Dejury", chef: false, worker: false },
+            { id: "m_jabaa", name: "Jabaa the Hutt", chef: false, worker: false },
+            { id: "m_jimmy", name: "Jimmy", chef: false, worker: false },
+            { id: "m_manni", name: "Manni", chef: false, worker: false },
+            { id: "m_marco", name: "Marco", chef: false, worker: false },
+            { id: "m_maurice", name: "Maurice", chef: false, worker: false },
+            { id: "m_thorsten", name: "Thorsten", chef: false, worker: false },
+            { id: "m_custom", name: "", isCustom: true, chef: false, worker: false }
+          ]
+        }
+      ]
+    };
+
+    let state = JSON.parse(localStorage.getItem("sl_state")) || JSON.parse(JSON.stringify(DEFAULT_DATA));
+    let currentRole = "chef";
+
+    // --- LIVE CLOUD (WEBSOCKET MQTT) ---
+    const SYNC_TOPIC = "santa_lucia_board_kassel_2026";
+    let mqttClient = null;
+    let isCloudReady = false;
+
+    function initCloudSync() {
+      const badge = document.getElementById("cloudBadge");
+      const clientRandom = "dave_" + Math.random().toString(16).substring(2, 9);
+      
+      // Nutzt sicheren WebSocket-Port 8884 bei HiveMQ (funktioniert auf iOS/Safari und Android)
+      mqttClient = new Paho.MQTT.Client("broker.hivemq.com", 8884, clientRandom);
+
+      mqttClient.onConnectionLost = function () {
+        isCloudReady = false;
+        badge.textContent = "🟡 Verbindung getrennt";
+        badge.style.color = "#eab308";
+        setTimeout(initCloudSync, 4000);
+      };
+
+      mqttClient.onMessageArrived = function (msg) {
+        try {
+          const payload = JSON.parse(msg.payloadString);
+          if (payload.action === "KILL") {
+            state.isKilled = true;
+            localStorage.setItem("sl_killed", "true");
+            checkKillStatus();
+            return;
+          }
+          if (payload.state) {
+            state = payload.state;
+            localStorage.setItem("sl_state", JSON.stringify(state));
+            renderUI();
+          }
+        } catch (e) {
+          console.error("Payload-Fehler:", e);
+        }
+      };
+
+      mqttClient.connect({
+        useSSL: true,
+        timeout: 6,
+        onSuccess: function () {
+          isCloudReady = true;
+          badge.textContent = "🟢 LIVE CLOUD AKTIV";
+          badge.style.color = "#22c55e";
+          mqttClient.subscribe(SYNC_TOPIC);
+          broadcastState(); // Eigenen Stand teilen
+        },
+        onFailure: function () {
+          badge.textContent = "🔴 Cloud Offline (Lokal)";
+          badge.style.color = "#ef4444";
+          setTimeout(initCloudSync, 6000);
+        }
+      });
+    }
+
+    function broadcastState() {
+      if (!isCloudReady || !mqttClient) return;
+      try {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ state: state }));
+        msg.destinationName = SYNC_TOPIC;
+        msg.retained = true;
+        mqttClient.send(msg);
+      } catch (e) {
+        console.error("Sync fehlgeschlagen", e);
+      }
+    }
+
+    function broadcastKill() {
+      if (!isCloudReady || !mqttClient) return;
+      const msg = new Paho.MQTT.Message(JSON.stringify({ action: "KILL" }));
+      msg.destinationName = SYNC_TOPIC;
+      msg.retained = true;
+      mqttClient.send(msg);
+    }
+
+    // --- INTRO & LOGIN ---
+    window.addEventListener("DOMContentLoaded", () => {
+      checkKillStatus();
+
+      // Intro Animation
+      setTimeout(() => {
+        document.getElementById("aufPart").style.opacity = "1";
+        document.getElementById("aufPart").style.transform = "translateX(0)";
+      }, 1200);
+
+      setTimeout(() => {
+        document.getElementById("rPart").style.opacity = "1";
+        document.getElementById("rPart").style.transform = "scale(1)";
+      }, 1900);
+
+      setTimeout(() => {
+        const intro = document.getElementById("introOverlay");
+        intro.style.opacity = "0";
+        setTimeout(() => {
+          intro.style.display = "none";
+          document.getElementById("authOverlay").style.display = "flex";
+        }, 600);
+      }, 3100);
+
+      initCloudSync();
+    });
+
+    function verifyPassword() {
+      const val = document.getElementById("passInput").value.trim();
+      if (val === "vamida") {
+        document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("appContainer").style.display = "flex";
+        renderUI();
+      } else if (val === "braunski-exit") {
+        triggerKill();
+      } else {
+        alert("Falsches Passwort!");
+      }
+    }
+
+    // --- APP LOGIK ---
+    function setRole(r) {
+      currentRole = r;
+      document.getElementById("roleChefBtn").className = "role-btn chef" + (r === "chef" ? " active" : "");
+      document.getElementById("roleWorkerBtn").className = "role-btn worker" + (r === "worker" ? " active" : "");
+      renderUI();
+    }
+
+    function toggleChef(cIdx, iIdx) {
+      if (currentRole !== "chef") return;
+      state.categories[cIdx].items[iIdx].chef = !state.categories[cIdx].items[iIdx].chef;
+      if (!state.categories[cIdx].items[iIdx].chef) {
+        state.categories[cIdx].items[iIdx].worker = false;
+      }
+      saveAndSync();
+    }
+
+    function toggleWorker(cIdx, iIdx) {
+      if (currentRole !== "worker") return;
+      if (!state.isReleased) {
+        alert("Der Auftrag ist noch nicht freigegeben!");
+        return;
+      }
+      const item = state.categories[cIdx].items[iIdx];
+      if (!item.chef) return;
+      item.worker = !item.worker;
+      saveAndSync();
+    }
+
+    function updateNote(cIdx, iIdx, val) {
+      state.categories[cIdx].items[iIdx].noteVal = val;
+      saveAndSync();
+    }
+
+    function updateCustomName(cIdx, iIdx, val) {
+      state.categories[cIdx].items[iIdx].name = val;
+      saveAndSync();
+    }
+
+    function updateJobMeta() {
+      state.customer = document.getElementById("jobCustomer").value;
+      state.date = document.getElementById("jobDate").value;
+      saveAndSync();
+    }
+
+    function releaseOrder() {
+      state.isReleased = !state.isReleased;
+      saveAndSync();
+    }
+
+    function resetBoard() {
+      if (!confirm("Möchtest du alle Haken für einen neuen Auftrag leeren?")) return;
+      state.isReleased = false;
+      state.categories.forEach(c => {
+        c.items.forEach(i => {
+          i.chef = false;
+          i.worker = false;
+          if (i.noteVal) i.noteVal = "";
+        });
+      });
+      saveAndSync();
+    }
+
+    function saveAndSync() {
+      localStorage.setItem("sl_state", JSON.stringify(state));
+      renderUI();
+      broadcastState();
+    }
+
+    function renderUI() {
+      document.getElementById("jobCustomer").value = state.customer || "";
+      document.getElementById("jobDate").value = state.date || "";
+
+      // Navigation Link
+      const nav = document.getElementById("navLink");
+      if (state.customer && state.customer.trim().length > 3) {
+        nav.style.display = "inline-flex";
+        nav.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(state.customer);
+      } else {
+        nav.style.display = "none";
+      }
+
+      // Status
+      const banner = document.getElementById("statusBanner");
+      const stText = document.getElementById("statusText");
+      const btnRel = document.getElementById("btnRelease");
+
+      if (state.isReleased) {
+        banner.className = "status-banner status-ready";
+        stText.textContent = "🚀 Freigegeben • Braunski hakt ab";
+        btnRel.textContent = "🔒 Zurück in Planung";
+      } else {
+        banner.className = "status-banner status-draft";
+        stText.textContent = "📝 In Planung • Santa Käptn wählt aus";
+        btnRel.textContent = "🚀 Auftrag für Braunski freigeben";
+      }
+
+      // Items & Progress
+      let reqCount = 0;
+      let doneCount = 0;
+      const listEl = document.getElementById("categoriesList");
+      listEl.innerHTML = "";
+
+      state.categories.forEach((cat, cIdx) => {
+        const catCard = document.createElement("div");
+        catCard.className = "category-card";
+
+        const title = document.createElement("div");
+        title.className = "category-title";
+        title.textContent = cat.name;
+        catCard.appendChild(title);
+
+        cat.items.forEach((item, iIdx) => {
+          if (item.chef) reqCount++;
+          if (item.chef && item.worker) doneCount++;
+
+          const row = document.createElement("div");
+          row.className = "item-row";
+
+          // Left Info
+          const info = document.createElement("div");
+          info.className = "item-info";
+
+          if (item.isCustom) {
+            if (currentRole === "chef") {
+              const custInput = document.createElement("input");
+              custInput.className = "item-subinput";
+              custInput.style.width = "140px";
+              custInput.placeholder = "+ Weiterer Mitarbeiter";
+              custInput.value = item.name;
+              custInput.oninput = (e) => updateCustomName(cIdx, iIdx, e.target.value);
+              info.appendChild(custInput);
+            } else {
+              const custSpan = document.createElement("span");
+              custSpan.className = "item-title";
+              custSpan.textContent = item.name || "(Zusätzlicher Mitarbeiter)";
+              info.appendChild(custSpan);
+            }
+          } else {
+            const titleSpan = document.createElement("span");
+            titleSpan.className = "item-title";
+            titleSpan.textContent = item.name;
+            info.appendChild(titleSpan);
+
+            if (item.noteType) {
+              if (currentRole === "chef") {
+                const nInput = document.createElement("input");
+                nInput.className = "item-subinput";
+                nInput.placeholder = item.noteType;
+                nInput.value = item.noteVal || "";
+                nInput.oninput = (e) => updateNote(cIdx, iIdx, e.target.value);
+                info.appendChild(nInput);
+              } else if (item.noteVal) {
+                const nBadge = document.createElement("span");
+                nBadge.className = "badge-sub";
+                nBadge.textContent = item.noteVal + " " + (item.noteType.includes("m") ? "m" : "Stk");
+                info.appendChild(nBadge);
+              }
+            }
+          }
+
+          // Chef Check
+          const chefCell = document.createElement("div");
+          chefCell.className = "check-cell" + (item.chef ? " chef-active" : "");
+          chefCell.textContent = item.chef ? "✓" : "";
+          chefCell.onclick = () => toggleChef(cIdx, iIdx);
+
+          // Worker Check
+          const workerCell = document.createElement("div");
+          if (!item.chef) {
+            workerCell.className = "check-cell locked";
+            workerCell.textContent = "—";
+          } else if (!state.isReleased) {
+            workerCell.className = "check-cell locked";
+            workerCell.textContent = "🔒";
+          } else {
+            workerCell.className = "check-cell" + (item.worker ? " worker-active" : "");
+            workerCell.textContent = item.worker ? "✓" : "";
+            workerCell.onclick = () => toggleWorker(cIdx, iIdx);
+          }
+
+          row.appendChild(info);
+          row.appendChild(chefCell);
+          row.appendChild(workerCell);
+          catCard.appendChild(row);
+        });
+
+        listEl.appendChild(catCard);
+      });
+
+      document.getElementById("progressText").textContent = doneCount + " / " + reqCount + " erledigt";
+    }
+
+    // --- WHATSAPP EXPORT ---
+    function shareWhatsApp() {
+      let t = `*SANTA LUCIA EINSATZ-REPORT*\n`;
+      if (state.customer) t += `📍 Kunde: ${state.customer}\n`;
+      if (state.date) t += `📅 Datum: ${state.date}\n`;
+      t += `\n`;
+
+      state.categories.forEach(c => {
+        const picked = c.items.filter(i => i.chef);
+        if (picked.length > 0) {
+          t += `*${c.name}*\n`;
+          picked.forEach(i => {
+            const h = i.worker ? "✅" : "⬜";
+            const note = i.noteVal ? ` (${i.noteVal})` : "";
+            t += `${h} ${i.name}${note}\n`;
+          });
+          t += `\n`;
+        }
+      });
+
+      navigator.clipboard.writeText(t).then(() => {
+        alert("Report in Zwischenablage kopiert! Jetzt in WhatsApp einfügen.");
+      }).catch(() => {
+        prompt("Report kopieren:", t);
+      });
+    }
+
+    // --- KILL SWITCH LOGIK ---
+    function checkKillStatus() {
+      if (localStorage.getItem("sl_killed") === "true" || state.isKilled) {
+        document.getElementById("introOverlay").style.display = "none";
+        document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("appContainer").style.display = "none";
+        document.getElementById("killOverlay").style.display = "flex";
+      }
+    }
+
+    function triggerKillPrompt() {
+      const code = prompt("Creator Master-Code zur Abschaltung eingeben:");
+      if (code === "braunski-exit") {
+        triggerKill();
+      } else if (code) {
+        alert("Ungültiger Code!");
+      }
+    }
+
+    function triggerKill() {
+      if (!confirm("ACHTUNG: Dies schaltet die App auf allen Handys dauerhaft aus. Fortfahren?")) return;
+      state.isKilled = true;
+      localStorage.setItem("sl_killed", "true");
+      broadcastKill();
+      checkKillStatus();
+    }
+  </script>
+</body>
+</html>
